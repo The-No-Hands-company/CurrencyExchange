@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Set variables
+APP_NAME="@PROJECT_NAME@"
+VERSION="@PROJECT_VERSION@"
+BUILD_DIR="build/Release"
+DEPLOY_DIR="deploy/macos"
+QT_PATH="/usr/local/opt/qt@6"  # Adjust this to your Qt installation path
+
+# Create deployment directory
+mkdir -p "$DEPLOY_DIR"
+
+# Create .app bundle structure
+APP_BUNDLE="$DEPLOY_DIR/$APP_NAME.app"
+mkdir -p "$APP_BUNDLE/Contents/MacOS"
+mkdir -p "$APP_BUNDLE/Contents/Resources"
+mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+
+# Copy the executable
+cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
+
+# Copy Qt libraries
+otool -L "$BUILD_DIR/$APP_NAME" | grep "libQt" | awk '{print $1}' | while read -r lib; do
+    cp "$lib" "$APP_BUNDLE/Contents/Frameworks/"
+done
+
+# Copy Qt plugins
+mkdir -p "$APP_BUNDLE/Contents/PlugIns/platforms"
+cp "$QT_PATH/plugins/platforms/libqcocoa.dylib" "$APP_BUNDLE/Contents/PlugIns/platforms/"
+
+# Create Info.plist
+cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.bitcoinsatoshicalculator.app</string>
+    <key>CFBundleName</key>
+    <string>$APP_NAME</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$VERSION</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+# Create a README file
+cat > "$DEPLOY_DIR/README.txt" << EOF
+Bitcoin Satoshi Calculator v$VERSION
+
+Installation Instructions:
+1. Double-click the $APP_NAME.app to run the application
+2. If you get a security warning, go to System Preferences > Security & Privacy > General and click "Open Anyway"
+
+Requirements:
+- macOS 10.15 or later
+- Qt 6.8.1 or later
+- Internet connection for real-time exchange rates
+
+Future Features:
+- Multiple language support
+- Custom themes and styles
+- Price charts and graphs
+- Blockchain network information
+- Custom icons and UI elements
+EOF
+
+# Create DMG
+hdiutil create -volname "$APP_NAME" -srcfolder "$APP_BUNDLE" -ov -format UDZO "${APP_NAME}_macos_v${VERSION}.dmg"
+
+echo "Deployment complete! Check the $DEPLOY_DIR folder and ${APP_NAME}_macos_v${VERSION}.dmg" 

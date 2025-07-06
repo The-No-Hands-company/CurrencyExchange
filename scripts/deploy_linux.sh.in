@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# Set variables
+APP_NAME="@PROJECT_NAME@"
+VERSION="@PROJECT_VERSION@"
+BUILD_DIR="build/Release"
+DEPLOY_DIR="deploy/linux"
+QT_PATH="/usr/lib/qt6"  # Adjust this to your Qt installation path
+
+# Create deployment directory
+mkdir -p "$DEPLOY_DIR"
+
+# Copy the executable
+cp "$BUILD_DIR/$APP_NAME" "$DEPLOY_DIR/"
+
+# Copy Qt libraries
+ldd "$BUILD_DIR/$APP_NAME" | grep "libQt" | awk '{print $3}' | while read -r lib; do
+    cp "$lib" "$DEPLOY_DIR/"
+done
+
+# Copy Qt plugins
+mkdir -p "$DEPLOY_DIR/platforms"
+cp "$QT_PATH/plugins/platforms/libqxcb.so" "$DEPLOY_DIR/platforms/"
+
+# Create AppImage
+cat > "$DEPLOY_DIR/$APP_NAME.desktop" << EOF
+[Desktop Entry]
+Name=$APP_NAME
+Exec=$APP_NAME
+Icon=$APP_NAME
+Type=Application
+Categories=Utility;Finance;
+EOF
+
+# Create a README file
+cat > "$DEPLOY_DIR/README.txt" << EOF
+Bitcoin Satoshi Calculator v$VERSION
+
+Installation Instructions:
+1. Make the binary executable:
+   chmod +x $APP_NAME
+2. Run the application:
+   ./$APP_NAME
+
+Requirements:
+- Linux distribution with Qt 6.8.1 or later
+- Internet connection for real-time exchange rates
+
+Future Features:
+- Multiple language support
+- Custom themes and styles
+- Price charts and graphs
+- Blockchain network information
+- Custom icons and UI elements
+EOF
+
+# Create tar archive
+tar -czf "${APP_NAME}_linux_v${VERSION}.tar.gz" -C "$DEPLOY_DIR" .
+
+echo "Deployment complete! Check the $DEPLOY_DIR folder and ${APP_NAME}_linux_v${VERSION}.tar.gz" 
